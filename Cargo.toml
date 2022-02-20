@@ -1,8 +1,8 @@
 [package]
 name = "kommandozeile"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.56.1"
+edition = "2018"
+rust-version = "1.54.0"
 description = "Collection of gimmicks to use when writing a CLI application"
 authors = ["Paul Horn <developer@knutwalker.de>"]
 license = "MIT OR Apache-2.0"
@@ -10,6 +10,7 @@ homepage = "https://gh.knutwalker.io/kommandozeile"
 repository = "https://github.com/knutwalker/kommandozeile/"
 categories = ["development-tools", "command-line-interface"]
 keywords = ["cli", "clap", "tracing"]
+resolver = "2"
 
 
 [features]

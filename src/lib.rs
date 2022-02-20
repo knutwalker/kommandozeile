@@ -576,11 +576,11 @@ impl Verbosity {
             Verbosity::Info => "info".into(),
             Verbosity::Debug => "debug".into(),
             Verbosity::Trace => "trace".into(),
-            Verbosity::CrateInfo => format!("{pkg_name}=info").into(),
-            Verbosity::CrateDebug => format!("{pkg_name}=debug").into(),
-            Verbosity::CrateTrace => format!("{pkg_name}=trace").into(),
-            Verbosity::InfoCrateTrace => format!("{pkg_name}=trace,info").into(),
-            Verbosity::DebugCrateTrace => format!("{pkg_name}=trace,debug").into(),
+            Verbosity::CrateInfo => format!("{}=info", pkg_name).into(),
+            Verbosity::CrateDebug => format!("{}=debug", pkg_name).into(),
+            Verbosity::CrateTrace => format!("{}=trace", pkg_name).into(),
+            Verbosity::InfoCrateTrace => format!("{}=trace,info", pkg_name).into(),
+            Verbosity::DebugCrateTrace => format!("{}=trace,debug", pkg_name).into(),
         }
     }
 }
