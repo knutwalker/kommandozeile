@@ -1,0 +1,586 @@
+// [x] args preprocessing
+// [x] color flag
+// [x] inputfile and outputfile with enum { std(Option<PathBuf>), path(PathBuf) }
+// [x] verbose flag
+// [x] default clap stuff, like what?
+// [ ] color-eyre setup
+// [ ] tracing setup
+
+pub mod args {
+    use std::ffi::OsString;
+
+    #[cfg(feature = "argfile")]
+    pub type Result<A> = std::io::Result<A>;
+    #[cfg(not(feature = "argfile"))]
+    pub type Result<A> = A;
+
+    pub fn args() -> Result<Vec<OsString>> {
+        expand_args(args_os())
+    }
+
+    pub fn args_from<T: Into<OsString>, I: Iterator<Item = T>>(args: I) -> Result<Vec<OsString>> {
+        expand_args(args.map(|s| s.into()))
+    }
+
+    #[cfg(feature = "wild")]
+    fn args_os() -> wild::ArgsOs {
+        wild::args_os()
+    }
+
+    #[cfg(not(feature = "wild"))]
+    fn args_os() -> std::env::ArgsOs {
+        std::env::args_os()
+    }
+
+    #[cfg(feature = "argfile")]
+    fn expand_args(args: impl Iterator<Item = OsString>) -> Result<Vec<OsString>> {
+        argfile::expand_args_from(args, argfile::parse_fromfile, argfile::PREFIX)
+    }
+
+    #[cfg(not(feature = "argfile"))]
+    fn expand_args(args: impl Iterator<Item = OsString>) -> Result<Vec<OsString>> {
+        args.collect()
+    }
+
+    #[cfg(feature = "argfile")]
+    pub(crate) fn _with_args<A>(op: impl FnOnce(Vec<OsString>) -> A) -> Result<A> {
+        Ok(op(args()?))
+    }
+
+    #[cfg(not(feature = "argfile"))]
+    pub(crate) fn _with_args<A>(op: impl FnOnce(Vec<OsString>) -> A) -> Result<A> {
+        op(args())
+    }
+
+    #[cfg(feature = "argfile")]
+    pub(crate) fn _with_args_from<A, T, I>(
+        args: I,
+        op: impl FnOnce(Vec<OsString>) -> A,
+    ) -> Result<A>
+    where
+        T: Into<OsString>,
+        I: Iterator<Item = T>,
+    {
+        Ok(op(args_from(args)?))
+    }
+
+    #[cfg(not(feature = "argfile"))]
+    pub(crate) fn _with_args_from<A, T, I>(
+        args: I,
+        op: impl FnOnce(Vec<OsString>) -> A,
+    ) -> Result<A>
+    where
+        T: Into<OsString>,
+        I: Iterator<Item = T>,
+    {
+        op(args_from(args))
+    }
+
+    #[cfg(feature = "argfile")]
+    pub(crate) fn _into_result<A>(value: A) -> Result<A> {
+        Ok(value)
+    }
+
+    #[cfg(not(feature = "argfile"))]
+    pub(crate) fn _into_result<A>(value: A) -> Result<A> {
+        value
+    }
+}
+
+#[cfg(any(feature = "clap_app_color", feature = "clap_color"))]
+pub mod color {
+    use clap::{ArgEnum, Args};
+    use concolor::ColorChoice;
+
+    #[cfg(feature = "clap_app_color")]
+    pub fn clap_app_color() -> clap::ColorChoice {
+        let color = concolor::get(concolor::Stream::Either);
+        if color.ansi_color() {
+            clap::ColorChoice::Always
+        } else {
+            clap::ColorChoice::Never
+        }
+    }
+
+    #[cfg(feature = "clap_color")]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, ArgEnum)]
+    pub enum Choice {
+        Auto,
+        Always,
+        Never,
+    }
+
+    #[cfg(feature = "clap_color")]
+    impl Default for Choice {
+        fn default() -> Self {
+            Self::Auto
+        }
+    }
+
+    #[cfg(feature = "clap_color")]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Args)]
+    pub struct Color {
+        /// Control when to use colors
+        #[clap(long, value_name = "WHEN", visible_alias = "colour", default_value_t = Choice::Auto, default_missing_value = "always", arg_enum)]
+        color: Choice,
+
+        /// Disable the use of color. Implies `--color=never`
+        #[clap(long, visible_alias = "no-colour", conflicts_with = "color")]
+        no_color: bool,
+    }
+
+    #[cfg(feature = "clap_color")]
+    impl Color {
+        pub fn apply(self, stream: impl Into<Option<concolor::Stream>>) -> concolor::Color {
+            let choice = self.as_color_choice();
+            concolor::set(choice);
+            let stream = stream.into().unwrap_or(concolor::Stream::Either);
+            concolor::get(stream)
+        }
+
+        pub(crate) fn as_color_choice(self) -> ColorChoice {
+            if self.no_color {
+                ColorChoice::Never
+            } else {
+                match self.color {
+                    Choice::Auto => ColorChoice::Auto,
+                    Choice::Always => ColorChoice::Always,
+                    Choice::Never => ColorChoice::Never,
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "clap_file")]
+pub mod filearg {
+    use same_file::Handle;
+    use std::{
+        ffi::OsStr,
+        fs::Metadata,
+        path::{Path, PathBuf},
+        str::FromStr,
+    };
+
+    macro_rules! file_arg {
+        ($($name:ident($stdx:ident => $hdl:ident)),+ $(,)?) => {
+            $(
+                #[derive(Debug, Clone)]
+                pub enum $name {
+                    $stdx(Option<PathBuf>),
+                    File(PathBuf),
+                }
+
+                impl $name {
+                    pub fn path(&self) -> Option<&Path> {
+                        match self {
+                            Self::$stdx(path) => path.as_deref(),
+                            Self::File(path) => Some(path),
+                        }
+                    }
+                }
+
+                impl FromStr for $name {
+                    type Err = std::convert::Infallible;
+
+                    fn from_str(s: &str) -> Result<Self, Self::Err> {
+                        Ok(Self::from(OsStr::new(s)))
+                    }
+                }
+
+                impl From<&OsStr> for $name {
+                    fn from(path: &OsStr) -> Self {
+                        if path == "-" {
+                            Self::$stdx(Handle::$hdl().ok().and_then(path_from_handle))
+                        } else {
+                            Self::File(Path::new(path).to_path_buf())
+                        }
+                    }
+                }
+            )+
+        };
+    }
+
+    file_arg!(InputFile(Stdin => stdin), OutputFile(Stdout => stdout), ErrorFile(Stderr => stderr));
+
+    fn path_from_handle(h: Handle) -> Option<PathBuf> {
+        use filepath::FilePath;
+        let f = h.as_file();
+        f.metadata()
+            .ok()
+            .filter(Metadata::is_file)
+            .and_then(|_| f.path().ok())
+    }
+}
+
+#[cfg(feature = "clap_verbose")]
+pub mod verbose {
+    use crate::Verbosity;
+    use clap::Args;
+
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Args)]
+    pub struct Verbose {
+        /// Print more logs, can be used multiple times
+        #[clap(short, long, parse(from_occurrences), conflicts_with = "quiet")]
+        verbose: u8,
+
+        /// Print less logs, can be used multiple times
+        #[clap(short, long, parse(from_occurrences), conflicts_with = "verbose")]
+        quiet: u8,
+    }
+
+    impl Verbose {
+        pub fn verbosity(self) -> Verbosity {
+            self.verbosity_with_default_level(Verbosity::Warn)
+        }
+
+        pub fn verbosity_with_default_level(self, default: Verbosity) -> Verbosity {
+            const VALUES: [Verbosity; 9] = [
+                Verbosity::Off,
+                Verbosity::Error,
+                Verbosity::Warn,
+                Verbosity::CrateInfo,
+                Verbosity::CrateDebug,
+                Verbosity::CrateTrace,
+                Verbosity::InfoCrateTrace,
+                Verbosity::DebugCrateTrace,
+                Verbosity::Trace,
+            ];
+
+            let verbosity = self.verbosity_value();
+
+            let default_pos = VALUES.iter().position(|&v| v == default).unwrap();
+
+            let pos = if verbosity >= 0 {
+                default_pos
+                    .saturating_add(verbosity.unsigned_abs())
+                    .min(VALUES.len() - 1)
+            } else {
+                default_pos.saturating_sub(verbosity.unsigned_abs())
+            };
+
+            VALUES[pos]
+        }
+
+        pub fn verbosity_value(self) -> isize {
+            (isize::from(self.verbose)) - (isize::from(self.quiet))
+        }
+    }
+}
+
+#[cfg(feature = "clap")]
+pub mod clap_app {
+    use clap::{Command, Parser};
+    use std::{ffi::OsString, io};
+
+    pub fn get<A: Parser>() -> crate::args::Result<A> {
+        crate::args::_with_args(get_from_args)
+    }
+
+    pub fn get_from<A, T, I>(args: I) -> io::Result<A>
+    where
+        A: Parser,
+        T: Into<OsString>,
+        I: Iterator<Item = T>,
+    {
+        crate::args::_with_args_from(args, get_from_args)
+    }
+
+    pub fn try_get<A: Parser>() -> crate::args::Result<clap::Result<A>> {
+        crate::args::_with_args(try_get_from_args)
+    }
+
+    pub fn try_get_from<A, T, I>(args: I) -> crate::args::Result<clap::Result<A>>
+    where
+        A: Parser,
+        T: Into<OsString>,
+        I: Iterator<Item = T>,
+    {
+        crate::args::_with_args_from(args, try_get_from_args)
+    }
+
+    pub(crate) fn get_from_args<A: Parser>(args: Vec<OsString>) -> A {
+        match try_get_from_args::<A>(args) {
+            Ok(res) => res,
+            Err(e) => e.exit(),
+        }
+    }
+
+    pub(crate) fn try_get_from_args<A: Parser>(args: Vec<OsString>) -> Result<A, clap::Error> {
+        #[cfg_attr(feature = "clap_app_color", allow(unused_mut))]
+        let mut cmd = A::command();
+        #[cfg(feature = "clap_app_color")]
+        let mut cmd = cmd.color(crate::clap_app_color());
+
+        match try_get_from_cmd_and_args::<A>(&mut cmd, args) {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                let e = e.format(&mut cmd);
+                drop(cmd);
+                Err(e)
+            }
+        }
+    }
+
+    fn try_get_from_cmd_and_args<A: clap::FromArgMatches>(
+        cmd: &mut Command<'_>,
+        args: Vec<OsString>,
+    ) -> Result<A, clap::Error> {
+        let matches = cmd.try_get_matches_from_mut(args)?;
+        A::from_arg_matches(&matches)
+    }
+}
+
+#[cfg(any(
+    feature = "setup_clap",
+    feature = "setup_color-eyre",
+    feature = "setup_tracing"
+))]
+pub mod setup {
+    use clap::Parser;
+    use std::{ffi::OsString, marker::PhantomData};
+
+    #[cfg(feature = "clap_verbose")]
+    type VerboseArg<A> = (&'static str, Box<dyn FnOnce(&A) -> crate::Verbose>);
+    #[cfg(feature = "clap_color")]
+    type ColorArg<A> = Box<dyn FnOnce(&A) -> crate::Color>;
+
+    #[cfg(feature = "setup_clap")]
+    pub struct SetupClap<A> {
+        _app: PhantomData<A>,
+        args: Option<Vec<OsString>>,
+        #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+        verbose: Option<VerboseArg<A>>,
+        #[cfg(feature = "clap_color")]
+        color: Option<ColorArg<A>>,
+        #[cfg(feature = "clap_color")]
+        stream: Option<concolor::Stream>,
+    }
+
+    #[cfg(feature = "setup_clap")]
+    impl<A: Parser> Default for SetupClap<A> {
+        fn default() -> Self {
+            Self {
+                _app: PhantomData,
+                args: None,
+                verbose: None,
+                color: None,
+                stream: None,
+            }
+        }
+    }
+
+    #[cfg(feature = "setup_clap")]
+    impl<A> std::fmt::Debug for SetupClap<A> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("SetupClap")
+                .field("args_defined", &self.args.is_some())
+                .field("verbose_defined", &self.verbose.is_some())
+                .field("color_defined", &self.color.is_some())
+                .field("stream_defined", &self.stream.is_some())
+                .finish()
+        }
+    }
+
+    #[cfg(feature = "setup_clap")]
+    impl<A: Parser> SetupClap<A> {
+        pub fn with_args<T: Into<OsString>, I: Iterator<Item = T>>(
+            mut self,
+            args: I,
+        ) -> crate::args::Result<Self> {
+            crate::args::_with_args_from(args, move |args| {
+                self.args = Some(args);
+                self
+            })
+        }
+
+        #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+        pub fn verbose_from(
+            mut self,
+            pkg_name: &'static str,
+            verbose: impl FnOnce(&A) -> crate::Verbose + 'static,
+        ) -> Self {
+            self.verbose = Some((pkg_name, Box::new(verbose)));
+            self
+        }
+
+        #[cfg(feature = "clap_color")]
+        pub fn color_from(mut self, color: impl FnOnce(&A) -> crate::Color + 'static) -> Self {
+            self.color = Some(Box::new(color));
+            self
+        }
+
+        #[cfg(feature = "clap_color")]
+        pub fn color_stream(mut self, stream: concolor::Stream) -> Self {
+            self.stream = Some(stream);
+            self
+        }
+
+        pub fn run(mut self) -> crate::args::Result<A> {
+            let args = self.args.take();
+
+            match args {
+                Some(args) => crate::args::_into_result(self.run_with_args(args)),
+                None => crate::args::_with_args(|args| self.run_with_args(args)),
+            }
+        }
+
+        fn run_with_args(self, args: Vec<OsString>) -> A {
+            let app = crate::clap_app::get_from_args(args);
+
+            #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+            {
+                if let Some((pkg_name, verbose)) = self.verbose {
+                    let verbose = verbose(&app);
+                    crate::setup_tracing(pkg_name, verbose.verbosity());
+                }
+            }
+
+            #[cfg(feature = "clap_color")]
+            {
+                if let Some(color) = self.color {
+                    let color = color(&app);
+                    let stream = self.stream.unwrap_or(concolor::Stream::Either);
+                    let _color = color.apply(stream);
+                }
+            }
+
+            app
+        }
+    }
+
+    #[cfg(feature = "setup_clap")]
+    pub fn clap<A: Parser>() -> SetupClap<A> {
+        SetupClap::default()
+    }
+
+    #[cfg(feature = "setup_color-eyre")]
+    pub fn color_eyre() -> color_eyre::Result<()> {
+        color_eyre::config::HookBuilder::default()
+            .display_env_section(false)
+            .install()
+    }
+
+    #[cfg(feature = "setup_tracing")]
+    pub fn tracing(pkg_name: &str, verbosity: crate::Verbosity) {
+        tracing_filter(&verbosity.as_filter(pkg_name))
+    }
+
+    #[cfg(feature = "setup_tracing")]
+    pub fn tracing_filter(filter: &str) {
+        use tracing_error::ErrorLayer;
+        use tracing_subscriber::prelude::*;
+        use tracing_subscriber::{fmt, EnvFilter};
+
+        if std::env::var("RUST_LIB_BACKTRACE").is_err() {
+            std::env::set_var("RUST_LIB_BACKTRACE", "1")
+        }
+        if std::env::var("RUST_BACKTRACE").is_err() {
+            std::env::set_var("RUST_BACKTRACE", "1")
+        }
+
+        let fmt_layer = fmt::layer().with_target(true);
+
+        let filter_layer =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(filter));
+
+        tracing_subscriber::registry()
+            .with(filter_layer)
+            .with(fmt_layer)
+            .with(ErrorLayer::default())
+            .init();
+    }
+}
+
+use std::borrow::Cow;
+
+#[cfg(feature = "clap")]
+pub use clap;
+#[cfg(feature = "color-eyre")]
+pub use color_eyre;
+#[cfg(feature = "concolor")]
+pub use concolor;
+#[cfg(feature = "tracing")]
+pub use tracing;
+
+pub use args::args;
+#[cfg(feature = "clap")]
+pub use clap_app::get as get_clap;
+#[cfg(feature = "clap_app_color")]
+pub use color::clap_app_color;
+#[cfg(feature = "clap_color")]
+pub use color::Color;
+#[cfg(feature = "clap_file")]
+pub use filearg::{ErrorFile, InputFile, OutputFile};
+#[cfg(feature = "setup_clap")]
+pub use setup::clap as setup_clap;
+#[cfg(feature = "setup_color-eyre")]
+pub use setup::color_eyre as setup_color_eyre;
+#[cfg(feature = "setup_tracing")]
+pub use setup::{tracing as setup_tracing, tracing_filter as setup_tracing_filter};
+#[cfg(feature = "clap_verbose")]
+pub use verbose::Verbose;
+
+#[cfg(feature = "color-eyre")]
+pub use color_eyre::Result;
+#[cfg(not(feature = "color-eyre"))]
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+
+#[macro_export]
+macro_rules! verbosity_filter {
+    ($verbose:expr) => {
+        $verbose.as_filter($crate::pkg_name!())
+    };
+}
+
+#[macro_export]
+macro_rules! pkg_name {
+    () => {
+        ::std::env!("CARGO_PKG_NAME")
+    };
+}
+
+/// Desired level of verbosity
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Verbosity {
+    /// No messages
+    Off,
+    /// error messages of all targets
+    Error,
+    /// warn messages of all targets
+    Warn,
+    /// info messages of all targets
+    Info,
+    /// debug messages of all targets
+    Debug,
+    /// trace messages of all targets
+    Trace,
+    /// info messages for the compiled crate
+    CrateInfo,
+    /// info messages for the compiled crate
+    CrateDebug,
+    /// trace messages for the compiled crate
+    CrateTrace,
+    /// info messages for all tragets, trace messages for the compiled crate
+    InfoCrateTrace,
+    /// debug messages for all tragets, trace messages for the compiled crate
+    DebugCrateTrace,
+}
+
+impl Verbosity {
+    pub fn as_filter(self, pkg_name: &str) -> Cow<'static, str> {
+        match self {
+            Verbosity::Off => "off".into(),
+            Verbosity::Error => "error".into(),
+            Verbosity::Warn => "warn".into(),
+            Verbosity::Info => "info".into(),
+            Verbosity::Debug => "debug".into(),
+            Verbosity::Trace => "trace".into(),
+            Verbosity::CrateInfo => format!("{pkg_name}=info").into(),
+            Verbosity::CrateDebug => format!("{pkg_name}=debug").into(),
+            Verbosity::CrateTrace => format!("{pkg_name}=trace").into(),
+            Verbosity::InfoCrateTrace => format!("{pkg_name}=trace,info").into(),
+            Verbosity::DebugCrateTrace => format!("{pkg_name}=trace,debug").into(),
+        }
+    }
+}
