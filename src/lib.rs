@@ -89,7 +89,9 @@ pub mod args {
 
 #[cfg(any(feature = "clap_app_color", feature = "clap_color"))]
 pub mod color {
+    #[cfg(feature = "clap_color")]
     use clap::{ArgEnum, Args};
+    #[cfg(feature = "clap_color")]
     use concolor::ColorChoice;
 
     #[cfg(feature = "clap_app_color")]
@@ -340,7 +342,7 @@ pub mod setup {
     use clap::Parser;
     use std::{ffi::OsString, marker::PhantomData};
 
-    #[cfg(feature = "clap_verbose")]
+    #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
     type VerboseArg<A> = (&'static str, Box<dyn FnOnce(&A) -> crate::Verbose>);
     #[cfg(feature = "clap_color")]
     type ColorArg<A> = Box<dyn FnOnce(&A) -> crate::Color>;
@@ -363,8 +365,11 @@ pub mod setup {
             Self {
                 _app: PhantomData,
                 args: None,
+                #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
                 verbose: None,
+                #[cfg(feature = "clap_color")]
                 color: None,
+                #[cfg(feature = "clap_color")]
                 stream: None,
             }
         }
@@ -373,12 +378,20 @@ pub mod setup {
     #[cfg(feature = "setup_clap")]
     impl<A> std::fmt::Debug for SetupClap<A> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("SetupClap")
-                .field("args_defined", &self.args.is_some())
-                .field("verbose_defined", &self.verbose.is_some())
-                .field("color_defined", &self.color.is_some())
-                .field("stream_defined", &self.stream.is_some())
-                .finish()
+            let mut d = f.debug_struct("SetupClap");
+
+            d.field("args_defined", &self.args.is_some());
+
+            #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+            d.field("verbose_defined", &self.verbose.is_some());
+
+            #[cfg(feature = "clap_color")]
+            d.field("color_defined", &self.color.is_some());
+
+            #[cfg(feature = "clap_color")]
+            d.field("stream_defined", &self.stream.is_some());
+
+            d.finish()
         }
     }
 
