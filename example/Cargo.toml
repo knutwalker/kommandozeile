@@ -6,4 +6,4 @@ rust-version = "1.58.1"
 publish = false
 
 [dependencies]
-kommandozeile = { version = "0.1.0", path = "../", features = ["full"]}
+kommandozeile = { version = "0.1.0", path = "../", features = ["full"] }

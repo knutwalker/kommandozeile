@@ -217,21 +217,53 @@ pub mod filearg {
 
 #[cfg(feature = "clap_verbose")]
 pub mod verbose {
+    use std::marker::PhantomData;
+
     use crate::Verbosity;
     use clap::Args;
 
-    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Args)]
-    pub struct Verbose {
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+    pub struct Local;
+
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+    pub struct Global;
+
+    pub trait Scope {
+        const IS_GLOBAL: bool;
+    }
+
+    impl Scope for Local {
+        const IS_GLOBAL: bool = false;
+    }
+
+    impl Scope for Global {
+        const IS_GLOBAL: bool = true;
+    }
+
+    #[derive(Copy, Clone, Default, PartialEq, Eq, Args)]
+    pub struct Verbose<S: Scope = Local> {
         /// Print more logs, can be used multiple times
-        #[clap(short, long, parse(from_occurrences), conflicts_with = "quiet")]
+        #[clap(short, long, parse(from_occurrences), conflicts_with = "quiet", global = S::IS_GLOBAL)]
         verbose: u8,
 
         /// Print less logs, can be used multiple times
-        #[clap(short, long, parse(from_occurrences), conflicts_with = "verbose")]
+        #[clap(short, long, parse(from_occurrences), conflicts_with = "verbose", global = S::IS_GLOBAL)]
         quiet: u8,
+
+        #[clap(skip)]
+        _scope: PhantomData<S>,
     }
 
-    impl Verbose {
+    impl<S: Scope> std::fmt::Debug for Verbose<S> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("Verbose")
+                .field("verbose", &self.verbose)
+                .field("quiet", &self.quiet)
+                .finish()
+        }
+    }
+
+    impl<S: Scope> Verbose<S> {
         pub fn verbosity(self) -> Verbosity {
             self.verbosity_with_default_level(Verbosity::Warn)
         }
@@ -266,6 +298,14 @@ pub mod verbose {
 
         pub fn verbosity_value(self) -> isize {
             (isize::from(self.verbose)) - (isize::from(self.quiet))
+        }
+
+        pub(crate) fn erase(self) -> Verbose {
+            Verbose {
+                verbose: self.verbose,
+                quiet: self.quiet,
+                _scope: PhantomData,
+            }
         }
     }
 }
@@ -339,6 +379,8 @@ pub mod clap_app {
     feature = "setup_tracing"
 ))]
 pub mod setup {
+    #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+    use crate::verbose::Scope;
     use clap::Parser;
     use std::{ffi::OsString, marker::PhantomData};
 
@@ -408,12 +450,12 @@ pub mod setup {
         }
 
         #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
-        pub fn verbose_from(
+        pub fn verbose_from<S: Scope>(
             mut self,
             pkg_name: &'static str,
-            verbose: impl FnOnce(&A) -> crate::Verbose + 'static,
+            verbose: impl FnOnce(&A) -> crate::Verbose<S> + 'static,
         ) -> Self {
-            self.verbose = Some((pkg_name, Box::new(verbose)));
+            self.verbose = Some((pkg_name, Box::new(move |a| verbose(a).erase())));
             self
         }
 
@@ -532,7 +574,7 @@ pub use setup::color_eyre as setup_color_eyre;
 #[cfg(feature = "setup_tracing")]
 pub use setup::{tracing as setup_tracing, tracing_filter as setup_tracing_filter};
 #[cfg(feature = "clap_verbose")]
-pub use verbose::Verbose;
+pub use verbose::{Global, Local, Verbose};
 
 #[cfg(feature = "color-eyre")]
 pub use color_eyre::Result;

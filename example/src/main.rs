@@ -17,7 +17,7 @@ fn main() -> Result<()> {
 #[derive(Debug, clap::Parser)]
 struct Args {
     #[clap(flatten)]
-    verbose: Verbose,
+    verbose: Verbose<Global>,
 
     #[clap(flatten)]
     color: Color,
@@ -27,4 +27,12 @@ struct Args {
 
     #[clap(short, long, parse(from_os_str), default_value = "-")]
     output: OutputFile,
+
+    #[clap(subcommand)]
+    cmd: Option<SubCmd>,
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum SubCmd {
+    Test,
 }
