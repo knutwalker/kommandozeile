@@ -581,7 +581,25 @@ pub enum Verbosity {
 }
 
 impl Verbosity {
-    pub fn as_filter(self, pkg_name: &str) -> Cow<'static, str> {
+    pub fn as_filter<'a>(self, pkg_name: impl Into<Option<&'a str>>) -> Cow<'static, str> {
+        match pkg_name.into() {
+            Some(pkg_name) => self.as_filter_for_pkg(pkg_name),
+            None => self.as_filter_for_all().into(),
+        }
+    }
+
+    pub fn as_filter_for_all(self) -> &'static str {
+        match self {
+            Verbosity::Off => "off",
+            Verbosity::Error => "error",
+            Verbosity::Warn => "warn",
+            Verbosity::CrateInfo => "info",
+            Verbosity::CrateDebug => "debug",
+            _ => "trace",
+        }
+    }
+
+    pub fn as_filter_for_pkg(self, pkg_name: &str) -> Cow<'static, str> {
         match self {
             Verbosity::Off => "off".into(),
             Verbosity::Error => "error".into(),
