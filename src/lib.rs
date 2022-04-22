@@ -167,7 +167,7 @@ pub mod filearg {
     macro_rules! file_arg {
         ($($name:ident($stdx:ident => $hdl:ident)),+ $(,)?) => {
             $(
-                #[derive(Debug, Clone)]
+                #[derive(Debug, Clone, PartialEq, Eq)]
                 pub enum $name {
                     $stdx(Option<PathBuf>),
                     File(PathBuf),
