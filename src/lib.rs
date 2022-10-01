@@ -90,7 +90,7 @@ pub mod args {
 #[cfg(any(feature = "clap_app_color", feature = "clap_color"))]
 pub mod color {
     #[cfg(feature = "clap_color")]
-    use clap::{ArgEnum, Args};
+    use clap::{Args, ValueEnum};
     #[cfg(feature = "clap_color")]
     use concolor::ColorChoice;
 
@@ -105,7 +105,7 @@ pub mod color {
     }
 
     #[cfg(feature = "clap_color")]
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, ArgEnum)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
     pub enum Choice {
         Auto,
         Always,
@@ -123,7 +123,7 @@ pub mod color {
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Args)]
     pub struct Color {
         /// Control when to use colors
-        #[clap(long, value_name = "WHEN", visible_alias = "colour", default_value_t = Choice::Auto, default_missing_value = "always", arg_enum)]
+        #[clap(long, value_name = "WHEN", visible_alias = "colour", default_value_t = Choice::Auto, default_missing_value = "always", value_enum)]
         color: Choice,
 
         /// Disable the use of color. Implies `--color=never`
@@ -220,7 +220,7 @@ pub mod verbose {
     use std::marker::PhantomData;
 
     use crate::Verbosity;
-    use clap::Args;
+    use clap::{ArgAction, Args};
 
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
     pub struct Local;
@@ -243,11 +243,11 @@ pub mod verbose {
     #[derive(Copy, Clone, Default, PartialEq, Eq, Args)]
     pub struct Verbose<S: Scope = Local> {
         /// Print more logs, can be used multiple times
-        #[clap(short, long, parse(from_occurrences), conflicts_with = "quiet", global = S::IS_GLOBAL)]
+        #[clap(short, long, action = ArgAction::Count, conflicts_with = "quiet", global = S::IS_GLOBAL)]
         verbose: u8,
 
         /// Print less logs, can be used multiple times
-        #[clap(short, long, parse(from_occurrences), conflicts_with = "verbose", global = S::IS_GLOBAL)]
+        #[clap(short, long, action = ArgAction::Count, conflicts_with = "verbose", global = S::IS_GLOBAL)]
         quiet: u8,
 
         #[clap(skip)]
@@ -328,11 +328,11 @@ pub mod clap_app {
         crate::args::_with_args_from(args, get_from_args)
     }
 
-    pub fn try_get<A: Parser>() -> crate::args::Result<clap::Result<A>> {
+    pub fn try_get<A: Parser>() -> crate::args::Result<clap::error::Result<A>> {
         crate::args::_with_args(try_get_from_args)
     }
 
-    pub fn try_get_from<A, T, I>(args: I) -> crate::args::Result<clap::Result<A>>
+    pub fn try_get_from<A, T, I>(args: I) -> crate::args::Result<clap::error::Result<A>>
     where
         A: Parser,
         T: Into<OsString>,
@@ -365,7 +365,7 @@ pub mod clap_app {
     }
 
     fn try_get_from_cmd_and_args<A: clap::FromArgMatches>(
-        cmd: &mut Command<'_>,
+        cmd: &mut Command,
         args: Vec<OsString>,
     ) -> Result<A, clap::Error> {
         let matches = cmd.try_get_matches_from_mut(args)?;
