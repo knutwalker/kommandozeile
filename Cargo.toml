@@ -23,7 +23,7 @@ full = [
     "clap_color",
     "clap_file",
     "clap_verbose",
-    
+
     "setup_clap",
     "setup_color-eyre",
     "setup_tracing",
@@ -43,7 +43,7 @@ clap_colour = ["clap_color"]
 # Provides InputFile and OutputFile types
 clap_file = ["clap", "filepath", "same-file"]
 # Provides --verbose and --quiet flags
-clap_verbose  = ["clap"]
+clap_verbose = ["clap"]
 
 # Provides additional clap extras
 setup_clap = ["clap"]
@@ -61,7 +61,7 @@ version = "0.1.3"
 optional = true
 version = "4.0.0"
 default-features = false
-features = ["std", "derive"]
+features = ["std", "error-context", "help", "suggestions", "usage", "derive"]
 
 [dependencies.color-eyre]
 optional = true
