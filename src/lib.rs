@@ -313,13 +313,13 @@ pub mod verbose {
 #[cfg(feature = "clap")]
 pub mod clap_app {
     use clap::{Command, Parser};
-    use std::{ffi::OsString, io};
+    use std::ffi::OsString;
 
     pub fn get<A: Parser>() -> crate::args::Result<A> {
         crate::args::_with_args(get_from_args)
     }
 
-    pub fn get_from<A, T, I>(args: I) -> io::Result<A>
+    pub fn get_from<A, T, I>(args: I) -> crate::args::Result<A>
     where
         A: Parser,
         T: Into<OsString>,
