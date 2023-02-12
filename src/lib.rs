@@ -497,7 +497,7 @@ pub mod setup {
             {
                 if let Some((pkg_name, verbose)) = self.verbose {
                     let verbose = verbose(&app);
-                    crate::setup_tracing(pkg_name, verbose.verbosity());
+                    crate::setup_tracing(pkg_name, verbose.verbosity(), BacktraceLevel::default());
                 }
             }
 
@@ -527,23 +527,54 @@ pub mod setup {
     }
 
     #[cfg(feature = "setup_tracing")]
-    pub fn tracing(pkg_name: &str, verbosity: crate::Verbosity) {
-        tracing_filter(&verbosity.as_filter(pkg_name))
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+    pub enum BacktraceLevel {
+        #[default]
+        DebugFullReleaseOff,
+        DebugSimpleReleaseOff,
+        Off,
+        DebugFullReleaseSimple,
+        Simple,
+        Full,
     }
 
     #[cfg(feature = "setup_tracing")]
-    pub fn tracing_filter(filter: &str) {
+    impl BacktraceLevel {
+        #[cfg(debug_assertions)]
+        fn level(self) -> &'static str {
+            match self {
+                Self::DebugFullReleaseOff | Self::DebugFullReleaseSimple | Self::Full => "full",
+                Self::DebugSimpleReleaseOff | Self::Simple => "1",
+                Self::Off => "0",
+            }
+        }
+
+        #[cfg(not(debug_assertions))]
+        fn level(self) -> &'static str {
+            match self {
+                Self::DebugFullReleaseOff | Self::DebugSimpleReleaseOff | Self::Off => "0",
+                Self::DebugFullReleaseSimple | Self::Simple => "1",
+                Self::Full => "full",
+            }
+        }
+    }
+
+    #[cfg(feature = "setup_tracing")]
+    pub fn tracing(pkg_name: &str, verbosity: crate::Verbosity, level: BacktraceLevel) {
+        tracing_filter(&verbosity.as_filter(pkg_name), level)
+    }
+
+    #[cfg(feature = "setup_tracing")]
+    pub fn tracing_filter(filter: &str, level: BacktraceLevel) {
         use tracing_error::ErrorLayer;
         use tracing_subscriber::prelude::*;
         use tracing_subscriber::{fmt, EnvFilter};
 
-        let backtrace = if cfg!(debug_assertions) { "full" } else { "1" };
-
         if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-            std::env::set_var("RUST_LIB_BACKTRACE", backtrace)
+            std::env::set_var("RUST_LIB_BACKTRACE", level.level())
         }
         if std::env::var("RUST_BACKTRACE").is_err() {
-            std::env::set_var("RUST_BACKTRACE", backtrace)
+            std::env::set_var("RUST_BACKTRACE", level.level())
         }
 
         let fmt_layer = fmt::layer().with_target(true);
@@ -584,7 +615,7 @@ pub use setup::clap as setup_clap;
 #[cfg(feature = "setup_color-eyre")]
 pub use setup::color_eyre as setup_color_eyre;
 #[cfg(feature = "setup_tracing")]
-pub use setup::{tracing as setup_tracing, tracing_filter as setup_tracing_filter};
+pub use setup::{tracing as setup_tracing, tracing_filter as setup_tracing_filter, BacktraceLevel};
 #[cfg(feature = "clap_verbose")]
 pub use verbose::{Global, Local, Verbose};
 
