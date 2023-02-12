@@ -389,7 +389,9 @@ pub mod clap_app {
 pub mod setup {
     #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
     use crate::verbose::Scope;
+    #[cfg(feature = "setup_clap")]
     use clap::Parser;
+    #[cfg(feature = "setup_clap")]
     use std::{ffi::OsString, marker::PhantomData};
 
     #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
