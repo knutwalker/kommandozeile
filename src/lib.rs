@@ -264,6 +264,14 @@ pub mod verbose {
     }
 
     impl<S: Scope> Verbose<S> {
+        pub fn new(verbose: u8, quiet: u8) -> Self {
+            Self {
+                verbose,
+                quiet,
+                _scope: PhantomData,
+            }
+        }
+
         pub fn verbosity(self) -> Verbosity {
             self.verbosity_with_default_level(Verbosity::Warn)
         }
