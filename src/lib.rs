@@ -537,11 +537,13 @@ pub mod setup {
         use tracing_subscriber::prelude::*;
         use tracing_subscriber::{fmt, EnvFilter};
 
+        let backtrace = if cfg!(debug_assertions) { "full" } else { "1" };
+
         if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-            std::env::set_var("RUST_LIB_BACKTRACE", "1")
+            std::env::set_var("RUST_LIB_BACKTRACE", backtrace)
         }
         if std::env::var("RUST_BACKTRACE").is_err() {
-            std::env::set_var("RUST_BACKTRACE", "1")
+            std::env::set_var("RUST_BACKTRACE", backtrace)
         }
 
         let fmt_layer = fmt::layer().with_target(true);
