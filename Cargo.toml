@@ -21,6 +21,7 @@ full = [
 
     "clap_app_color",
     "clap_color",
+    "clap_derive",
     "clap_file",
     "clap_verbose",
 
@@ -40,6 +41,8 @@ clap_app_colour = ["clap_app_color"]
 # Provides a color flag for clap
 clap_color = ["clap", "concolor/api_unstable"]
 clap_colour = ["clap_color"]
+# Adds the derive feature to clap
+clap_derive = ["clap/derive"]
 # Provides InputFile and OutputFile types
 clap_file = ["clap", "filepath", "same-file"]
 # Provides --verbose and --quiet flags
@@ -61,7 +64,7 @@ version = "0.1.3"
 optional = true
 version = "4.0.0"
 default-features = false
-features = ["std", "error-context", "help", "suggestions", "usage", "derive"]
+features = ["std", "error-context", "help", "suggestions", "usage"]
 
 [dependencies.color-eyre]
 optional = true

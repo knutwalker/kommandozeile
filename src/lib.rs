@@ -90,8 +90,6 @@ pub mod args {
 #[cfg(any(feature = "clap_app_color", feature = "clap_color"))]
 pub mod color {
     #[cfg(feature = "clap_color")]
-    use clap::{Args, ValueEnum};
-    #[cfg(feature = "clap_color")]
     use concolor::ColorChoice;
 
     #[cfg(feature = "clap_app_color")]
@@ -105,7 +103,8 @@ pub mod color {
     }
 
     #[cfg(feature = "clap_color")]
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    #[cfg_attr(feature = "clap_derive", derive(clap::ValueEnum))]
     pub enum Choice {
         Auto,
         Always,
@@ -120,14 +119,21 @@ pub mod color {
     }
 
     #[cfg(feature = "clap_color")]
-    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Args)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+    #[cfg_attr(feature = "clap_derive", derive(clap::Args))]
     pub struct Color {
         /// Control when to use colors
-        #[clap(long, value_name = "WHEN", visible_alias = "colour", default_value_t = Choice::Auto, default_missing_value = "always", value_enum)]
+        #[cfg_attr(
+            feature = "clap_derive",
+            clap(long, value_name = "WHEN", visible_alias = "colour", default_value_t = Choice::Auto, default_missing_value = "always", value_enum)
+        )]
         color: Choice,
 
         /// Disable the use of color. Implies `--color=never`
-        #[clap(long, visible_alias = "no-colour", conflicts_with = "color")]
+        #[cfg_attr(
+            feature = "clap_derive",
+            clap(long, visible_alias = "no-colour", conflicts_with = "color")
+        )]
         no_color: bool,
     }
 
@@ -220,7 +226,6 @@ pub mod verbose {
     use std::marker::PhantomData;
 
     use crate::Verbosity;
-    use clap::{ArgAction, Args};
 
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
     pub struct Local;
@@ -240,17 +245,24 @@ pub mod verbose {
         const IS_GLOBAL: bool = true;
     }
 
-    #[derive(Copy, Clone, Default, PartialEq, Eq, Args)]
+    #[derive(Copy, Clone, Default, PartialEq, Eq)]
+    #[cfg_attr(feature = "clap_derive", derive(clap::Args))]
     pub struct Verbose<S: Scope = Local> {
         /// Print more logs, can be used multiple times
-        #[clap(short, long, action = ArgAction::Count, conflicts_with = "quiet", global = S::IS_GLOBAL)]
+        #[cfg_attr(
+            feature = "clap_derive",
+            clap(short, long, action = clap::ArgAction::Count, conflicts_with = "quiet", global = S::IS_GLOBAL)
+        )]
         verbose: u8,
 
         /// Print less logs, can be used multiple times
-        #[clap(short, long, action = ArgAction::Count, conflicts_with = "verbose", global = S::IS_GLOBAL)]
+        #[cfg_attr(
+            feature = "clap_derive",
+            clap(short, long, action = clap::ArgAction::Count, conflicts_with = "verbose", global = S::IS_GLOBAL)
+        )]
         quiet: u8,
 
-        #[clap(skip)]
+        #[cfg_attr(feature = "clap_derive", clap(skip))]
         _scope: PhantomData<S>,
     }
 
