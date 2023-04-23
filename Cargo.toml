@@ -39,7 +39,7 @@ args_file = ["argfile"]
 clap_app_color = ["clap/color", "concolor/auto"]
 clap_app_colour = ["clap_app_color"]
 # Provides a color flag for clap
-clap_color = ["clap", "concolor/api_unstable"]
+clap_color = ["clap", "concolor/api"]
 clap_colour = ["clap_color"]
 # Adds the derive feature to clap
 clap_derive = ["clap/derive"]
@@ -73,7 +73,7 @@ features = ["issue-url"]
 
 [dependencies.concolor]
 optional = true
-version = "0.0.8"
+version = "0.1.1"
 default-features = false
 
 [dependencies.filepath]
@@ -94,7 +94,7 @@ version = "0.2.0"
 
 [dependencies.tracing-subscriber]
 optional = true
-version = "0.3.16"
+version = "0.3.17"
 features = ["env-filter"]
 
 [dependencies.wild]
