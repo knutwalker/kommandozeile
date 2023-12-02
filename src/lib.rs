@@ -505,20 +505,20 @@ pub mod setup {
         fn run_with_args(self, args: Vec<OsString>) -> A {
             let app = crate::clap_app::get_from_args(args);
 
-            #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
-            {
-                if let Some((pkg_name, verbose)) = self.verbose {
-                    let verbose = verbose(&app);
-                    crate::setup_tracing(pkg_name, verbose.verbosity(), BacktraceLevel::default());
-                }
-            }
-
             #[cfg(feature = "clap_color")]
             {
                 if let Some(color) = self.color {
                     let color = color(&app);
                     let stream = self.stream.unwrap_or(concolor::Stream::Either);
                     let _color = color.apply(stream);
+                }
+            }
+
+            #[cfg(all(feature = "clap_verbose", feature = "setup_tracing"))]
+            {
+                if let Some((pkg_name, verbose)) = self.verbose {
+                    let verbose = verbose(&app);
+                    crate::setup_tracing(pkg_name, verbose.verbosity(), BacktraceLevel::default());
                 }
             }
 
@@ -589,7 +589,13 @@ pub mod setup {
             std::env::set_var("RUST_BACKTRACE", level.level())
         }
 
-        let fmt_layer = fmt::layer().with_target(true);
+        let fmt_layer = fmt::layer()
+            .with_target(true)
+            .with_file(true)
+            .with_line_number(true);
+
+        #[cfg(any(feature = "clap_color", feature = "clap_app_color"))]
+        let fmt_layer = fmt_layer.with_ansi(concolor::get(concolor::Stream::Stderr).ansi_color());
 
         let filter_layer =
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(filter));
