@@ -533,9 +533,21 @@ pub mod setup {
 
     #[cfg(feature = "setup_color-eyre")]
     pub fn color_eyre() -> color_eyre::Result<()> {
-        color_eyre::config::HookBuilder::default()
-            .display_env_section(false)
-            .install()
+        color_eyre_builder().install()
+    }
+
+    #[cfg(feature = "setup_color-eyre")]
+    pub fn color_eyre_builder() -> color_eyre::config::HookBuilder {
+        let builder = color_eyre::config::HookBuilder::default().display_env_section(false);
+
+        #[cfg(any(feature = "clap_color", feature = "clap_app_color"))]
+        let builder = if concolor::get(concolor::Stream::Stderr).ansi_color() {
+            builder
+        } else {
+            builder.theme(color_eyre::config::Theme::new())
+        };
+
+        builder
     }
 
     #[cfg(feature = "setup_tracing")]
@@ -631,7 +643,7 @@ pub use filearg::{ErrorFile, InputFile, OutputFile};
 #[cfg(feature = "setup_clap")]
 pub use setup::clap as setup_clap;
 #[cfg(feature = "setup_color-eyre")]
-pub use setup::color_eyre as setup_color_eyre;
+pub use setup::{color_eyre as setup_color_eyre, color_eyre_builder as setup_color_eyre_builder};
 #[cfg(feature = "setup_tracing")]
 pub use setup::{tracing as setup_tracing, tracing_filter as setup_tracing_filter, BacktraceLevel};
 #[cfg(feature = "clap_verbose")]
