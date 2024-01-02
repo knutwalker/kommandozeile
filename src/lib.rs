@@ -1,11 +1,3 @@
-// [x] args preprocessing
-// [x] color flag
-// [x] inputfile and outputfile with enum { std(Option<PathBuf>), path(PathBuf) }
-// [x] verbose flag
-// [x] default clap stuff, like what?
-// [ ] color-eyre setup
-// [ ] tracing setup
-
 pub mod args {
     use std::ffi::OsString;
 
