@@ -203,6 +203,15 @@ pub mod filearg {
 
     file_arg!(InputFile(Stdin => stdin), OutputFile(Stdout => stdout), ErrorFile(Stderr => stderr));
 
+    impl InputFile {
+        pub fn read_to_string(&self) -> super::Result<String> {
+            Ok(match self {
+                Self::Stdin(Some(path)) | Self::File(path) => ::std::fs::read_to_string(path)?,
+                Self::Stdin(None) => std::io::read_to_string(std::io::stdin().lock())?,
+            })
+        }
+    }
+
     fn path_from_handle(h: Handle) -> Option<PathBuf> {
         use filepath::FilePath;
         let f = h.as_file();
