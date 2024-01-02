@@ -604,7 +604,8 @@ pub mod setup {
         let fmt_layer = fmt::layer()
             .with_target(true)
             .with_file(true)
-            .with_line_number(true);
+            .with_line_number(true)
+            .with_writer(std::io::stderr);
 
         #[cfg(any(feature = "clap_color", feature = "clap_app_color"))]
         let fmt_layer = fmt_layer.with_ansi(concolor::get(concolor::Stream::Stderr).ansi_color());
