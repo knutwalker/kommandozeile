@@ -200,4 +200,7 @@ tags
 # Persistent undo
 [._]*.un~
 
+# Don't ignore the .github directory
+!.github/
+
 Cargo.lock

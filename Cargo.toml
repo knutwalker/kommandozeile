@@ -11,7 +11,8 @@ repository = "https://github.com/knutwalker/kommandozeile/"
 categories = ["development-tools", "command-line-interface"]
 keywords = ["cli", "clap", "tracing"]
 resolver = "2"
-
+readme = "README.md"
+publish = true
 
 [features]
 default = ["full"]
@@ -100,3 +101,37 @@ features = ["env-filter"]
 [dependencies.wild]
 optional = true
 version = "2.1.0"
+
+[lints.rust]
+bad_style = "warn"
+dead_code = "warn"
+improper_ctypes = "warn"
+missing_copy_implementations = "warn"
+missing_debug_implementations = "warn"
+no_mangle_generic_items = "warn"
+non_shorthand_field_patterns = "warn"
+overflowing_literals = "warn"
+path_statements = "warn"
+patterns_in_fns_without_body = "warn"
+private_bounds = "warn"
+private_interfaces = "warn"
+rust_2018_idioms = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unconditional_recursion = "warn"
+unsafe_code = "warn"
+unused = "warn"
+unused_allocation = "warn"
+unused_comparisons = "warn"
+unused_crate_dependencies = "warn"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_parens = "warn"
+unused_qualifications = "warn"
+
+[lints.clippy]
+all = "warn"
+cargo = "warn"
+missing_const_for_fn = { level = "allow", priority = 1 }
+multiple_crate_versions = { level = "allow", priority = 1 }
+

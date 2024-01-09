@@ -1,3 +1,5 @@
+//! A collection of useful utilities for command line applications
+
 pub mod args {
     use std::ffi::OsString;
 
@@ -370,8 +372,9 @@ pub mod clap_app {
     }
 
     pub(crate) fn try_get_from_args<A: Parser>(args: Vec<OsString>) -> Result<A, clap::Error> {
-        #[cfg_attr(feature = "clap_app_color", allow(unused_mut))]
+        #[allow(unused_mut)]
         let mut cmd = A::command();
+
         #[cfg(feature = "clap_app_color")]
         let mut cmd = cmd.color(crate::clap_app_color());
 
@@ -707,28 +710,28 @@ impl Verbosity {
 
     pub fn as_filter_for_all(self) -> &'static str {
         match self {
-            Verbosity::Off => "off",
-            Verbosity::Error => "error",
-            Verbosity::Warn => "warn",
-            Verbosity::CrateInfo => "info",
-            Verbosity::CrateDebug => "debug",
+            Self::Off => "off",
+            Self::Error => "error",
+            Self::Warn => "warn",
+            Self::CrateInfo => "info",
+            Self::CrateDebug => "debug",
             _ => "trace",
         }
     }
 
     pub fn as_filter_for_pkg(self, pkg_name: &str) -> Cow<'static, str> {
         match self {
-            Verbosity::Off => "off".into(),
-            Verbosity::Error => "error".into(),
-            Verbosity::Warn => "warn".into(),
-            Verbosity::Info => "info".into(),
-            Verbosity::Debug => "debug".into(),
-            Verbosity::Trace => "trace".into(),
-            Verbosity::CrateInfo => format!("{}=info", pkg_name).into(),
-            Verbosity::CrateDebug => format!("{}=debug", pkg_name).into(),
-            Verbosity::CrateTrace => format!("{}=trace", pkg_name).into(),
-            Verbosity::InfoCrateTrace => format!("{}=trace,info", pkg_name).into(),
-            Verbosity::DebugCrateTrace => format!("{}=trace,debug", pkg_name).into(),
+            Self::Off => "off".into(),
+            Self::Error => "error".into(),
+            Self::Warn => "warn".into(),
+            Self::Info => "info".into(),
+            Self::Debug => "debug".into(),
+            Self::Trace => "trace".into(),
+            Self::CrateInfo => format!("{}=info", pkg_name).into(),
+            Self::CrateDebug => format!("{}=debug", pkg_name).into(),
+            Self::CrateTrace => format!("{}=trace", pkg_name).into(),
+            Self::InfoCrateTrace => format!("{}=trace,info", pkg_name).into(),
+            Self::DebugCrateTrace => format!("{}=trace,debug", pkg_name).into(),
         }
     }
 }
