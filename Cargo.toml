@@ -2,7 +2,7 @@
 name = "kommandozeile"
 version = "0.1.0"
 edition = "2018"
-rust-version = "1.54.0"
+rust-version = "1.70.0"
 description = "Collection of gimmicks to use when writing a CLI application"
 authors = ["Paul Horn <developer@knutwalker.de>"]
 license = "MIT OR Apache-2.0"
