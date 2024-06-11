@@ -29,6 +29,8 @@ full = [
     "setup_clap",
     "setup_color-eyre",
     "setup_tracing",
+
+    "tracing_attributes",
 ]
 
 # Provides glob expand as args preprocessing
@@ -55,6 +57,9 @@ setup_clap = ["clap"]
 setup_color-eyre = ["color-eyre"]
 # Provides tracing install hook
 setup_tracing = ["tracing", "tracing-error", "tracing-subscriber"]
+
+# Include the attributes feature for tracing
+tracing_attributes = ["tracing/attributes"]
 
 
 [dependencies.argfile]
@@ -87,6 +92,8 @@ version = "1.0.6"
 
 [dependencies.tracing]
 optional = true
+default-features = false
+features = ["std"]
 version = "0.1.37"
 
 [dependencies.tracing-error]
@@ -134,4 +141,3 @@ all = "warn"
 cargo = "warn"
 missing_const_for_fn = { level = "allow", priority = 1 }
 multiple_crate_versions = { level = "allow", priority = 1 }
-
